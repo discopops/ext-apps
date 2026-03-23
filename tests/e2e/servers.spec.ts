@@ -184,10 +184,20 @@ async function waitForAppLoad(page: Page) {
  */
 async function loadServer(page: Page, serverName: string) {
   await page.goto("/?theme=hide");
-  // Wait for servers to connect (select becomes enabled when servers are ready)
-  await expect(page.locator("select").first()).toBeEnabled({ timeout: 30000 });
-  await page.locator("select").first().selectOption({ label: serverName });
-  await page.click('button:has-text("Call Tool")');
+  const serverSelect = page.locator("select").first();
+
+  // Wait for servers to connect (select becomes enabled when servers are ready).
+  await expect(serverSelect).toBeEnabled({ timeout: 30000 });
+
+  // Some CI runs render the select before options are fully populated.
+  await expect
+    .poll(async () => serverSelect.locator("option").allTextContents(), {
+      timeout: 30000,
+    })
+    .toContain(serverName);
+
+  await serverSelect.selectOption({ label: serverName });
+  await page.getByRole("button", { name: "Call Tool" }).click();
   await waitForAppLoad(page);
 }
 
