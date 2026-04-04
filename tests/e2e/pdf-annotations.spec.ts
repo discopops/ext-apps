@@ -21,11 +21,29 @@ function getAppFrame(page: Page) {
   return page.frameLocator("iframe").first().frameLocator("iframe").first();
 }
 
+async function waitForSelectOption(
+  page: Page,
+  selectIndex: number,
+  optionLabel: string,
+) {
+  const select = page.locator("select").nth(selectIndex);
+
+  await expect.poll(
+    async () => select.locator("option").allTextContents(),
+    {
+      timeout: 30000,
+    },
+  ).toContain(optionLabel);
+
+  return select;
+}
+
 /** Load the PDF server and call display_pdf with the default PDF. */
 async function loadPdfServer(page: Page) {
   await page.goto("/?theme=hide");
-  await expect(page.locator("select").first()).toBeEnabled({ timeout: 30000 });
-  await page.locator("select").first().selectOption({ label: "PDF Server" });
+  const serverSelect = await waitForSelectOption(page, 0, "PDF Server");
+  await expect(serverSelect).toBeEnabled({ timeout: 30000 });
+  await serverSelect.selectOption({ label: "PDF Server" });
   await page.click('button:has-text("Call Tool")');
   await waitForAppLoad(page);
 }
@@ -66,7 +84,7 @@ async function extractViewUUID(page: Page): Promise<string> {
  */
 async function callInteract(page: Page, input: Record<string, unknown>) {
   // Select "interact" in the tool dropdown (second select on the page)
-  const toolSelect = page.locator("select").nth(1);
+  const toolSelect = await waitForSelectOption(page, 1, "interact");
   await toolSelect.selectOption("interact");
 
   // Fill the input textarea with the JSON
